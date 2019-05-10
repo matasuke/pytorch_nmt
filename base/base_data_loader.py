@@ -14,9 +14,9 @@ class BaseDataLoader(DataLoader):
             self,
             dataset: Dataset,
             batch_size: int,
-            shuffle: bool,
-            validation_split: float,
-            num_workers: int,
+            shuffle: bool=True,
+            validation_split: float=0.0,
+            num_workers: int=1,
             collate_fn: Callable=default_collate,
     ):
         self.validation_split = validation_split

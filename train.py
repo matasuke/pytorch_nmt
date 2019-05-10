@@ -15,8 +15,8 @@ def main(config: ConfigParser):
     logger = config.get_logger("train")
 
     # setup data_loader instances
-    data_loader = config.initialize("data_loader", module_data)
-    valid_data_loader = data_loader.split_validation()
+    data_loader = config.initialize("train_data_loader", module_data)
+    valid_data_loader = config.initialize("val_data_loader", module_data)
 
     # build model architecture, then print to console
     model = config.initialize("arch", module_arch)

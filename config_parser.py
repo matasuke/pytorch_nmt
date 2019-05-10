@@ -56,7 +56,7 @@ class ConfigParser:
             time_stamp = datetime.now().strftime(r"%m%d_%H%M%S") if timestamp else ''
             self._save_dir = save_dir / "models" / expr_name / time_stamp
             self._log_dir = save_dir / "log" / expr_name / time_stamp
-            self._test = save_dir / "test" / expr_name / time_stamp
+            self._test_dir = save_dir / "test" / expr_name / time_stamp
 
             self._save_dir.mkdir(parents=True, exist_ok=True)
             self._log_dir.mkdir(parents=True, exist_ok=True)
