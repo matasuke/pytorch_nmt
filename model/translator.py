@@ -1,4 +1,4 @@
-from typing import List, Callable
+from typing import List, Callable, Union, Tuple
 
 import torch.nn as nn
 import torch
@@ -50,9 +50,13 @@ class Translator(object):
                     tokens[i] = src[maxIndex[0]]
         return tokens
 
-    def translateBatch(self, src_batch: torch.Tensor, tgt_batch: torch.Tensor, lengths: List[int]):
+    def translateBatch(
+            self,
+            src_batch: torch.Tensor,
+            tgt_batch: Union[torch.Tensor, None],
+            lengths: List[int],
+    ):
         batch_size = src_batch.size(1)
-
         #  (1) run the encoder on the src
         encStates, context = self.model.encoder(src_batch, lengths)
 
@@ -98,25 +102,21 @@ class Translator(object):
 
         decOut = self.model.make_init_decoder_output(context)
 
-        padMask = src_batch.data.eq(TextPreprocessor.PAD_ID).t().unsqueeze(0).repeat(self.beam_width, 1, 1)
+        # padMask = src_batch.data.eq(TextPreprocessor.PAD_ID).t().unsqueeze(0).repeat(self.beam_width, 1, 1)
         padMask = src_batch.data.eq(TextPreprocessor.PAD_ID).t().repeat(self.beam_width, 1)
         batchIdx = list(range(batch_size))
         remainingSents = batch_size
 
         for i in range(self.max_length):
-
             self.model.decoder.apply(applyContextMask)
 
-            # Prepare decoder input.
+            # Prepare decoder input. [1, batch_size * beam_width]
             input = torch.stack([b.getCurrentState() for b in beam
                                  if not b.done]).t().contiguous().view(1, -1)
-
             decOut, decStates, attn = self.model.decoder(input, decStates, context, decOut)
-            # decOut: 1 x (beam*batch) x numWords
-            decOut = decOut.squeeze(0)
-            out = self.model.generator.forward(decOut)
-
-            # batch x beam x numWords
+            decOut = decOut.squeeze(0)  # decOut: [batch_size * beam_width, hidden_dim]
+            out = self.model.generator.forward(decOut)  # out: [batch_size * beam_width, numWords]
+            # [batch_size, beam_width, numWords]
             wordLk = out.view(self.beam_width, remainingSents, -1).transpose(0, 1).contiguous()
             attn = attn.view(self.beam_width, remainingSents, -1).transpose(0, 1).contiguous()
 
@@ -124,6 +124,7 @@ class Translator(object):
             for b in range(batch_size):
                 if beam[b].done:
                     continue
+
                 idx = batchIdx[b]
                 if not beam[b].advance(wordLk.data[idx], attn.data[idx]):
                     active += [b]
@@ -171,33 +172,38 @@ class Translator(object):
             allScores += [scores[:n_best].tolist()]
             valid_attn = src_batch.data[:, b].ne(TextPreprocessor.PAD_ID).nonzero().squeeze(1)
             # hyps, attn = zip(*[beam[b].getHyp(k) for k in ks[:n_best]])
-            hyps, attn = zip(*[beam[b].getHyp(k) for k in ks[:n_best]])
+            hyps, attn = [], []
+            for k in ks[:n_best]:
+                hyp, att = beam[b].getHyp(k)
+                hyps.append(torch.stack(hyp).tolist())
+                attn.append(att)
             attn = [a.index_select(1, valid_attn) for a in attn]
-            allHyp += [[int(i) for i in hyps[0]]]
-            allAttn.append([(i.tolist(),) for i in attn])
+            # allHyp += [[int(i) for i in hyps[j]] for j in len(hyps)]
+            # allAttn.append([(i.tolist(),) for i in attn])
+            allHyp += [hyps]
+            allAttn += [attn]
 
         return allHyp, allScores, allAttn, goldScores
 
     def translate(
             self,
             src_batch: torch.Tensor,
-            tgt_batch: torch.Tensor,
+            tgt_batch: Union[torch.Tensor, None],
             lengths: List[int],
-    ):
+            indices: List[int],
+    ) -> Tuple[List, List, List]:
         #  (2) translate
-        pred, predScore, attn, goldScore = self.translateBatch(src_batch, tgt_batch, lengths)
-        #pred, predScore, attn, goldScore = \
-        #    list(zip(*sorted(zip(pred, predScore, attn, goldScore, indices), key=lambda x: x[-1])))[:-1]
+        pred, pred_score, attn, gold_score = \
+            self.translateBatch(src_batch, tgt_batch, lengths)
+        pred, pred_score, attn, gold_score = \
+            list(zip(*sorted(zip(pred, pred_score, attn, gold_score, indices), key=lambda x: x[-1])))[:-1]
 
         #  (3) convert indexes to words
-        predBatch = []
-        '''
-        predBatch = []
+        pred_batch = []
         for b in range(src_batch.size(1)):
-            predBatch.append(
-                [self.buildTargetTokens(pred[b][n], src_batch[b], attn[b][n])
+            pred_batch.append(
+                [self.buildTargetTokens(pred[b][n], src_batch[:, b], attn[b][n])
                  for n in range(self.n_best)]
             )
-       '''
 
-        return predBatch, predScore, goldScore
+        return pred_batch, pred_score, gold_score

@@ -6,68 +6,58 @@ from tqdm import tqdm
 import data_loader.data_loaders as module_data
 import model.model as module_arch
 import model.translator as module_translator
-from train import get_instance
+from config_parser import ConfigParser
 
 
-def main(config, test_config, resume):
+def main(config: ConfigParser, resume: str):
     # setup data_loader instances
     data_loader = getattr(module_data, config['data_loader']['type'])(
-        src_path=test_config['data_loader']['args']['src_path'],
-        tgt_path=test_config['data_loader']['args']['tgt_path'],
+        src_path=config['data_loader']['args']['test_src_path'],
+        tgt_path=config['data_loader']['args']['test_tgt_path'],
         src_preprocessor_path=config['data_loader']['args']['src_preprocessor_path'],
         tgt_preprocessor_path=config['data_loader']['args']['tgt_preprocessor_path'],
-        batch_size=test_config['data_loader']['args']['batch_size'],
-        num_workers=test_config['data_loader']['args']['num_workers'],
+        batch_size=config['data_loader']['args']['batch_size'],
         shuffle=False,
         validation_split=0.0,
+        num_workers=1,
     )
-    # data_loader = get_instance(module_data, 'data_loader', test_config)
 
     # build model architecture
-    model = get_instance(module_arch, 'arch', config)
+    model = config.initialize('arch', module_arch)
     print(model)
 
-    # get function handles of loss and metrics
-    # loss_fn = getattr(module_loss, config['loss'])
-    # metric_fns = [getattr(module_metric, met) for met in config['metrics']]
-
     # load state dict
+    print(f'Loading checkpoint: {resume}')
     checkpoint = torch.load(resume)
     state_dict = checkpoint['state_dict']
-    if test_config['n_gpu'] > 1:
+    if config['n_gpu'] > 1:
         model = torch.nn.DataParallel(model)
     model.load_state_dict(state_dict)
 
     # prepare model for testing
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model.to(device)
+    model.eval()
+
     trans_args = {
         'model': model,
         'src_preprocessor': data_loader.src_text_preprocessor,
         'tgt_preprocessor': data_loader.tgt_text_preprocessor,
     }
-    test_config['sampler']['args'] = {**trans_args, **test_config['sampler']['args']}
+    translator = config.initialize('translator', module_translator, *trans_args.values())
 
-    translator = get_instance(module_translator, 'sampler', test_config)
-    model = get_instance(module_arch, 'arch', config)
-    # model.summary()
-
-    pred_score_total, pred_words_total, gold_score_total, gold_words_total = 0, 0, 0, 0
+    # prepare output file
+    out_f = (config.test_dir / config['translator']['output']).open('w')
 
     with torch.no_grad():
-        for batch_idx, (src, tgt, lengths) in enumerate(tqdm(data_loader)):
+        for batch_idx, (src, tgt, lengths, indices) in enumerate(tqdm(data_loader)):
             src, tgt = src.to(device), tgt.to(device)
-            pred_batch, pred_score, gold_score = translator.translate(src, tgt, lengths)
-            # save sample images, or do something with output here
-
-            pred_score_total += sum(score[0] for score in pred_score)
-            pred_words_total += sum(len(x[0]) for x in pred_batch)
-            gold_score_total += sum(gold_score)
-            gold_words_total += sum(len(x) for x in tgt)
+            pred_batch, _, _ = translator.translate(src, None, lengths, indices)
 
             for b in range(len(pred_batch)):
-                pass
+                out_f.write(' '.join(pred_batch[b][0]) + '\n')
 
-    # print(log)
+    out_f.close()
 
 
 if __name__ == '__main__':
@@ -75,19 +65,10 @@ if __name__ == '__main__':
 
     parser.add_argument('-r', '--resume', default=None, type=str, required=True,
                         help='path to latest checkpoint (default: None)')
-    parser.add_argument('-c', '--test_config', default=None, type=str, required=True,
-                        help='path to config for testing')
-    parser.add_argument('-d', '--device', default=[], type=str, nargs='+', required=True,
+    parser.add_argument('-d', '--device', default=None, type=str, required=True,
                         help='indices of GPUs to enable (default: all)')
 
     args = parser.parse_args()
+    config = ConfigParser.parse(args)
 
-    if args.device:
-        os.environ["CUDA_VISIBLE_DEVICES"] = ','.join(args.device)
-
-    config = torch.load(args.resume)['config']
-
-    with open(args.test_config, 'r') as f:
-        test_config = json.load(f)
-
-    main(config, test_config, args.resume)
+    main(config, args.resume)

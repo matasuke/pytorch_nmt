@@ -25,7 +25,6 @@ class Trainer(BaseTrainer):
             config: Dict,
             data_loader: DataLoader,
             valid_data_loader: Optional[DataLoader]=None,
-            lr_scheduler=None,
     ):
         '''
         trainer class
@@ -44,7 +43,6 @@ class Trainer(BaseTrainer):
         self.data_loader = data_loader
         self.valid_data_loader = valid_data_loader
         self.do_validation = self.valid_data_loader is not None
-        self.lr_scheduler = lr_scheduler
         self.log_step = int(np.sqrt(data_loader.batch_size))
 
     def _eval_metrics(self, output: torch.Tensor, target: torch.Tensor):
@@ -74,7 +72,7 @@ class Trainer(BaseTrainer):
 
         total_loss, total_ppl = 0, 0
         total_metrics = np.zeros(len(self.metrics))
-        for batch_idx, (src, tgt, lengths) in enumerate(self.data_loader):
+        for batch_idx, (src, tgt, lengths, _) in enumerate(self.data_loader):
             src, tgt = src.to(self.device), tgt.to(self.device)
 
             self.model.zero_grad()

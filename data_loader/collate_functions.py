@@ -25,11 +25,15 @@ def seq2seq_collate_fn(src_tgt_pair: List[Tuple[torch.Tensor, torch.Tensor]]) ->
 
         return padded_seqs, lengths
 
+    indices = list(range(len(src_tgt_pair)))
+
     # sort a list of sentence length based on source sentence to use pad_padded_sequence
-    src_tgt_pair.sort(key=lambda x: len(x[0]), reverse=True)
+    src_tgt_pair, indices = \
+        zip(*sorted(zip(src_tgt_pair, indices), key=lambda x: len(x[0][0]), reverse=True))
+    # src_tgt_pair.sort(key=lambda x: len(x[0]), reverse=True)
     src, tgt = zip(*src_tgt_pair)
 
     src, lengths = merge(src)
     tgt, _ = merge(tgt)
 
-    return src, tgt, lengths
+    return src, tgt, lengths, indices

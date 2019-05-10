@@ -50,14 +50,17 @@ class ConfigParser:
             time_stamp = self.resume.parent.stem if timestamp else ''
             self._save_dir = save_dir / "models" / expr_name / time_stamp
             self._log_dir = save_dir / "log" / expr_name / time_stamp
+            self._test_dir = save_dir / "test" / expr_name / time_stamp
 
         else:
             time_stamp = datetime.now().strftime(r"%m%d_%H%M%S") if timestamp else ''
             self._save_dir = save_dir / "models" / expr_name / time_stamp
             self._log_dir = save_dir / "log" / expr_name / time_stamp
+            self._test = save_dir / "test" / expr_name / time_stamp
 
             self._save_dir.mkdir(parents=True, exist_ok=True)
             self._log_dir.mkdir(parents=True, exist_ok=True)
+            self._test_dir.mkdir(parents=True, exist_ok=True)
 
             self.save(self._save_dir / DEFAULT_CONFIG_FILE_NAME)
 
@@ -218,3 +221,8 @@ class ConfigParser:
     def log_dir(self):
         'get the path to logging directory.'
         return self._log_dir
+
+    @property
+    def test_dir(self):
+        'get the path to test directory.'
+        return self._test_dir

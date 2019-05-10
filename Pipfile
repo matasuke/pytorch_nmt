@@ -9,8 +9,10 @@ jupyter = "jupyter notebook"
 pytest = "python -m pytest -vv"
 
 [packages]
+tqdm = "*"
 pyyaml = "*"
 torch= ">=1.0"
+gensim = "*"
 
 [dev-packages]
 codecov = "*"

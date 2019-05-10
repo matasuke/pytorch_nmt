@@ -1,0 +1,68 @@
+{
+    "name": "small_parallel",
+    "n_gpu": 1,
+    "arch": {
+        "type": "Model",
+        "args": {
+             "emb_dim": 300,
+             "in_vocab_size": 8000,
+             "out_vocab_size": 8000,
+             "hidden_dim": 512,
+             "num_layers": 2,
+             "dropout_ratio": 0.3,
+             "brnn": true,
+             "input_feed": true
+        }
+    },
+    "data_loader": {
+        "type": "Seq2seqDataLoader",
+        "args":{
+            "src_path": "data/corpora/small_parallel.ja",
+            "tgt_path": "data/corpora/small_parallel.en",
+            "val_src_path": "data/corpora/small_parallel.val.ja",
+            "val_tgt_path": "data/corpora/small_parallel.val.en",
+            "test_src_path": "data/corpora/small_parallel.test.ja",
+            "test_tgt_path": "data/corpora/small_parallel.test.en",
+            "src_preprocessor_path": "data/preprocessor/small_parallel.8000.ja.pkl",
+            "tgt_preprocessor_path": "data/preprocessor/small_parallel.8000.en.pkl",
+            "batch_size": 128,
+            "shuffle": true,
+            "validation_split": 0.1,
+            "num_workers": 4
+        }
+    },
+    "optimizer": {
+        "type": "Optim",
+        "args":{
+            "method":"sgd",
+            "lr": 1,
+            "lr_decay": 0.5,
+            "max_grad_norm": 5,
+            "start_decay_at": null
+        }
+    },
+    "translator": {
+        "type": "Translator",
+        "args":{
+            "replace_unk": true,
+            "beam_width": 5,
+            "n_best": 1,
+            "max_length": 50
+        },
+        "output": "output.txt"
+    },
+    "loss": "nll_loss",
+    "metrics": [
+        "my_metric", "my_metric2"
+    ],
+    "trainer": {
+        "epochs": 50,
+        "save_dir": "data/saved/",
+        "save_period": 1,
+        "verbosity": 2,
+        "monitor": "min val_loss",
+        "early_stop": 10,
+        "tensorboardX": true,
+        "log_dir": "data/saved/runs"
+    }
+}

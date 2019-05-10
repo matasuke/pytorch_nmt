@@ -101,10 +101,11 @@ ENV/
 .mypy_cache/
 
 # input data, saved log, checkpoints
-data/
-input/
-saved/
-datasets/
+*.pkl
+!*.json
+data/saved/
+data/corpora/
+data/preprocessor/
 
 # editor, os cache directory
 .vscode/
