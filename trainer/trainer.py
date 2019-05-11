@@ -127,7 +127,7 @@ class Trainer(BaseTrainer):
         total_val_loss, total_val_ppl = 0, 0
         total_val_metrics = np.zeros(len(self.metrics))
         with torch.no_grad():
-            for batch_idx, (src, tgt, lengths) in enumerate(self.data_loader):
+            for batch_idx, (src, tgt, lengths, _) in enumerate(self.data_loader):
                 src, tgt = src.to(self.device), tgt.to(self.device)
 
                 output = self.model(src, tgt[:-1], lengths)  # exclude last target from inputs
