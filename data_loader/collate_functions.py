@@ -36,4 +36,6 @@ def seq2seq_collate_fn(src_tgt_pair: List[Tuple[torch.Tensor, torch.Tensor]]) ->
     src, lengths = merge(src)
     tgt, _ = merge(tgt)
 
+    lengths = torch.LongTensor([lengths])
+
     return src, tgt, lengths, indices

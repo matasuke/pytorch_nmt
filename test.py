@@ -31,8 +31,11 @@ def main(config: ConfigParser, resume: str):
     checkpoint = torch.load(resume)
     state_dict = checkpoint['state_dict']
     if config['n_gpu'] > 1:
-        model = torch.nn.DataParallel(model)
+        model = torch.nn.DataParallel(model, device_ids=config.device)
     model.load_state_dict(state_dict)
+
+    if config['n_gpu'] > 1:
+        model = model.module  # for data parallel
 
     # prepare model for testing
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

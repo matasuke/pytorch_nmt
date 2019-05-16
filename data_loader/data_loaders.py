@@ -13,7 +13,7 @@ class Seq2SeqDataset(Dataset):
     '''
     Dataset for seq2seq
     '''
-    __slots__ = [
+    __slot__ = [
         'src_list',
         'tgt_list',
         'src_text_preprocessor',
@@ -47,11 +47,11 @@ class Seq2SeqDataset(Dataset):
     def __getitem__(self, idx: int) -> torch.Tensor:
         src_tokens = self.src_list[idx].split()
         src_indices = self.src_text_preprocessor.tokens2indice(src_tokens, sos=False, eos=False)
-        src_indices = torch.Tensor(src_indices)
+        src_indices = torch.LongTensor(src_indices)
 
         tgt_tokens = self.tgt_list[idx].split()
         tgt_indices = self.tgt_text_preprocessor.tokens2indice(tgt_tokens, sos=True, eos=True)
-        tgt_indices = torch.Tensor(tgt_indices)
+        tgt_indices = torch.LongTensor(tgt_indices)
 
         return src_indices, tgt_indices
 

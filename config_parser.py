@@ -28,6 +28,7 @@ class ConfigParser:
     def __init__(self, args: Dict, timestamp: bool=True):
         if "device" in args:
             os.environ["CUDA_VISIBLE_DEVICES"] = args['device']
+            self.device = [int(device) for device in args['device'].split(',')]
 
         if 'resume' in args:
             self.resume: Union[Path, None] = Path(args['resume'])

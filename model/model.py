@@ -90,9 +90,15 @@ class Encoder(nn.Module):
         :param hidden_state: hidden state to initialize LSTM state.
         '''
         embedded = self.embedding(rnn_inputs)
-        embedded = pack_padded_sequence(embedded, lengths)
+
+        # size of lengths is like [1, batch_size] for DataParallel(dim=1)
+        # so it has to be changed  to [batch_size,] to get correct length split size.
+        lengths = lengths.squeeze(0).tolist()
+        total_length = embedded.size(0)
+
+        embedded = pack_padded_sequence(embedded, lengths, batch_first=False)
         outputs, hidden_states = self.lstm(embedded, hidden_states)
-        outputs, _ = pad_packed_sequence(outputs)
+        outputs, _ = pad_packed_sequence(outputs, total_length=total_length)
 
         return hidden_states, outputs
 

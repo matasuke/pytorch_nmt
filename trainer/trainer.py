@@ -77,6 +77,9 @@ class Trainer(BaseTrainer):
 
             self.model.zero_grad()
             output = self.model(src, tgt[:-1], lengths)  # exclude last target from inputs
+            # [1, batch_size, out_vocab_size] > [batch_size, out_vocab_size]
+            # this is for DataParallel option with dim=1
+            output = output.squeeze(0)
             loss = self.loss(output, tgt[1:].view(-1))  # exclude <SOS> from targets
             loss.backward()
             self.optimizer.step()
@@ -131,6 +134,10 @@ class Trainer(BaseTrainer):
                 src, tgt = src.to(self.device), tgt.to(self.device)
 
                 output = self.model(src, tgt[:-1], lengths)  # exclude last target from inputs
+
+                # [1, batch_size, out_vocab_size] -> [batch_size, out_vocab_size]
+                output = output.squeeze(0)
+
                 loss = self.loss(output, tgt[1:].view(-1))  # exclude <SOS> from targets
 
                 self.writer.set_step((epoch - 1) * len(self.valid_data_loader) + batch_idx, 'valid')
